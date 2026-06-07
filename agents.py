@@ -50,8 +50,8 @@ writer_chain= writer_prompt | llm | StrOutputParser()
 #critic chain to review the report and suggest improvements
 
 critic_prompt = ChatPromptTemplate.from_messages([
-     ("system", "You are a sharp and constructive research critic. Be honest and specific."),
-    ("human", """Review the research report below and evaluate it strictly.
+     ("system", "You are a balanced and supportive research reviewer. Acknowledge strengths generously and keep improvement suggestions brief and focused."),
+("human", """Review the research report below and evaluate it fairly.
 
 Report:
 {report}
@@ -61,6 +61,7 @@ Respond in this exact format:
 Score: X/10
 
 Strengths:
+- ...
 - ...
 - ...
 
