@@ -31,3 +31,4 @@ uvicorn
 # Typing and validation
 pydantic
 typing-extensions
+sarvamai
