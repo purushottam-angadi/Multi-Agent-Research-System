@@ -12,6 +12,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source
 COPY . .
 
-# No EXPOSE/hardcoded port — Railway injects $PORT at runtime.
-# Shell form (not exec/array form) is required so $PORT actually expands.
-CMD uvicorn main:app --host 0.0.0.0 --port $PORT
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
