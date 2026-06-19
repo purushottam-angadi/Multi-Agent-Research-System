@@ -1,9 +1,5 @@
 FROM python:3.11-slim
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
-
 WORKDIR /app
 
 COPY requirements.txt .
@@ -11,6 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# No EXPOSE/hardcoded port — Railway injects $PORT at runtime.
-# Shell form (not exec/array form) is required so $PORT actually expands.
-CMD streamlit run Home.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true
+EXPOSE 8501
+
+CMD ["streamlit", "run", "Home.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]
