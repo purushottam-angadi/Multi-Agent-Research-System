@@ -20,8 +20,7 @@ tavily
 beautifulsoup4
 lxml
 
-# Vector stores and embeddings
-chromadb
+
 sentence-transformers
 
 # Backend / API integration
@@ -31,4 +30,4 @@ uvicorn
 # Typing and validation
 pydantic
 typing-extensions
-sarvamai
+langgraph
