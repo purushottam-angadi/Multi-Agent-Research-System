@@ -1,10 +1,10 @@
-# 🔬 AI Research Pipeline
+###Multi-Agent Research System
 
-Multi-agent research system using **LangGraph + Mistral AI + Tavily**, served via **FastAPI**, and visualized with a **Streamlit** multi-page UI — all containerized with **Docker**.
+A multi-agent research assistant that plans queries,searches the web and scrapes the content, fact-checks claims with citations, and critiques its own report before finalizing it. Built with **LangGraph** for agent orchestration, **Mistral AI** for reasoning, and **Tavily** for search & scraping, with **LangSmith** for tracing agent runs.
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 research_app/
@@ -15,16 +15,17 @@ research_app/
 │   ├── tools.py         # LangChain tools
 │   ├── requirements.txt
 │   └── Dockerfile
+│   └── .env
 ├── frontend/
 │   ├── Home.py          # Streamlit entry point + topic input
 │   ├── pages/
 │   │   ├── 1_Report.py
 │   │   ├── 2_Critique.py
 │   │   └── 3_Citations.py
+│   │   └── 4_FactCheck.py
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── docker-compose.yml
-├── .env.example
 └── .gitignore
 ```
 
@@ -37,7 +38,7 @@ research_app/
 ```bash
 git clone <your-repo>
 cd research_app
-cp .env.example .env
+cp .env
 # Fill in your API keys in .env
 ```
 
@@ -46,6 +47,7 @@ cp .env.example .env
 ```env
 MISTRAL_API_KEY=your_mistral_key
 TAVILY_API_KEY=your_tavily_key
+LANGSMITH_API_KEY=your_langsmith_key
 ```
 
 ### 3. Build and run with Docker Compose
@@ -73,9 +75,9 @@ Streamlit → POST /research → FastAPI (async job)
       ↓
 Streamlit polls GET /research/{job_id} every 4s
       ↓
-Pipeline runs: Search → Scrape → Write → Critique → Citations
+Pipeline runs: Search → Scrape → Write → Fact Check → Critique → Citations
       ↓
-Results stored, Streamlit shows 3 navigable pages
+Results stored, Streamlit shows 4 navigable pages
 ```
 
 ---
@@ -84,10 +86,11 @@ Results stored, Streamlit shows 3 navigable pages
 
 | Page         | Shows                                    |
 |-------------|------------------------------------------|
-| 🏠 Home      | Topic input, pipeline trigger, status    |
-| 📄 Report    | Full structured research report          |
-| 🧐 Critique  | Score, strengths, areas to improve       |
-| 📚 Citations | APA and IEEE formatted references        |
+|  Home      | Topic input, pipeline trigger, status    |
+|  Report    | Full structured research report          |
+|  Critique  | Score, strengths, areas to improve       |
+|  Fact Check | Claims verified, sources matched, confidence score |
+|  Citations | APA and IEEE formatted references        |
 
 Every page has a **Download** button to save the output as `.txt`.
 
