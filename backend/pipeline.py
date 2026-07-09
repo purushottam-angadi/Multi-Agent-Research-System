@@ -18,7 +18,10 @@ from typing import TypedDict
 from dotenv import load_dotenv
 load_dotenv() 
 import os
-os.environ["LANGSMITH_API_KEY"] = os.getenv("LANGSMITH_API_KEY")
+langsmith_key = os.getenv("LANGSMITH_API_KEY")
+if langsmith_key:
+    os.environ["LANGSMITH_API_KEY"] = langsmith_key
+    
 os.environ["LANGSMITH_TRACING"] = "true"
 os.environ["LANGSMITH_PROJECT"] = "multi-agent-research-pipeline"
 
