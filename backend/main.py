@@ -22,7 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory job store  {job_id: {"status": ..., "result": ...}}
+
 jobs: dict = {}
 executor = ThreadPoolExecutor(max_workers=3)
 
@@ -43,6 +43,7 @@ class ResearchResult(BaseModel):
     topic: Optional[str] = None
     report: Optional[str] = None
     feedback: Optional[str] = None
+    fact_check: Optional[str] = None
     citations: Optional[str] = None
     error: Optional[str] = None
 
