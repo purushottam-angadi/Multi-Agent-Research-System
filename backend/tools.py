@@ -88,7 +88,7 @@ def scrape_url(url: str) -> str:
 @tool
 def write_report(topic: str, research: str) -> str:
     """Generate a structured research report from gathered information."""
-     writer_prompt = ChatPromptTemplate.from_messages([
+    writer_prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a research writer. Write naturally and clearly, but every number, 
 date, name, or statistic you use must come from the Research Gathered text — not from your own 
 knowledge, even if it's true or well-known.
