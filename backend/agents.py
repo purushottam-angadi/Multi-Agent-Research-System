@@ -15,9 +15,9 @@ def build_search_agent():
         model=llm,
         tools=[web_search],
         system_prompt=(
-            "You must call the web_search tool at least once before answering. "
+            "You must call the web_search tool just once before answering. "
             "Never answer from memory. Never invent URLs, titles, or content. "
-            "Every fact and every URL in your answer must come directly from the "
+            "Every fact in your answer must come directly from the "
             "tool's output. If the tool returns nothing useful, say so explicitly "
             "instead of filling in an answer."
         ),
@@ -40,7 +40,6 @@ def build_scrape_agent():
     ) 
     )
 
-
 def build_writer_agent():
     return create_agent(   
         model=llm,
@@ -48,11 +47,13 @@ def build_writer_agent():
         system_prompt=(
             "You are a report-writing agent.\n"
             "Rules:\n"
-            "1. Always call the write_report tool to generate the report — never write "
-            "the report yourself directly.\n"
-            "2. Return the tool's output exactly as given. Do not rewrite, summarize, "
+            "1. Call the write_report tool EXACTLY ONCE per request. Never call it a "
+            "second time for any reason — not to retry, refine, expand, or double-check.\n"
+            "2. As soon as you receive the tool's output, return it as your final answer. "
+            "Do not call any tool again after that.\n"
+            "3. Return the tool's output exactly as given. Do not rewrite, summarize, "
             "shorten, or add anything to it.\n"
-            "3. Do not add facts, numbers, or commentary of your own before or after "
+            "4. Do not add facts, numbers, or commentary of your own before or after "
             "the tool's output."
         ),
     )
@@ -83,7 +84,7 @@ def build_fact_checker_agent():
             "1. Always call the fact_check_report tool to verify claims.\n"
             "2. Never invent or assume facts, add extra claims, or remove claims "
             "the tool returned — only use the tool output exactly as given.\n"
-            "3. Present all claims returned by the tool (up to 15) in a clear "
+            "3. Present all claims returned by the tool only 15 in a clear "
             "Markdown table.\n"
             "   - Each row should represent one claim and its verification status.\n"
             "   - Columns: Claim | Status | Source.\n"
