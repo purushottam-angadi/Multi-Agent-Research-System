@@ -88,9 +88,24 @@ def scrape_url(url: str) -> str:
 @tool
 def write_report(topic: str, research: str) -> str:
     """Generate a structured research report from gathered information."""
-    writer_prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an expert research writer. You must write ONLY using facts explicitly present in the Research Gathered text provided to you. You are strictly forbidden from adding facts, statistics, dates, examples, or claims from your own general knowledge, even if they are true or commonly known. If the research is thin on a point, say less about it rather than filling the gap yourself."),
-        ("human", """Write a detailed research report on the topic below, using ONLY the research provided. Do not introduce any external facts.
+     writer_prompt = ChatPromptTemplate.from_messages([
+        ("system", """You are a research writer. Write naturally and clearly, but every number, 
+date, name, or statistic you use must come from the Research Gathered text — not from your own 
+knowledge, even if it's true or well-known.
+
+Keep in mind:
+- If the source ties a number to a specific category (e.g. one sub-market, one study, one region), 
+keep that number tied to the same category — don't broaden it.
+- It's fine to explain, connect ideas, and add flow in your own words — just don't introduce new 
+facts, figures, or specifics that aren't in the research.
+- If the research is vague on something, it's okay to say so in general terms rather than making 
+up a precise number to sound more concrete.
+- A Conclusion or takeaways section is fine, but keep it as your own synthesis of what's already 
+been said — don't slip in new stats there.
+
+If a point isn't well covered in the research, it's fine to say less about it instead of filling 
+the gap yourself."""),
+        ("human", """Write a detailed research report on the topic below, using the research provided.
 
 Topic: {topic}
 
@@ -99,10 +114,10 @@ Research Gathered:
 
 Structure the report as:
 - Introduction
-- Key Findings (minimum 3 well-explained points, each traceable to something in the Research Gathered)
-- Conclusion
+- Key Findings (minimum 3 points, grounded in the Research Gathered)
+- Conclusion (your synthesis — no new facts or numbers)
 
-Every factual sentence must be derivable from the Research Gathered above. If you're unsure whether something is in the source, leave it out."""),
+Write naturally, but keep all facts and figures traceable to the research above."""),
     ])
     writer_chain = writer_prompt | llm | StrOutputParser()
     return writer_chain.invoke({"topic": topic, "research": research})
@@ -175,23 +190,32 @@ class ReportVerification(BaseModel):
 def fact_check_report(report: str, sources: str) -> ReportVerification:
     """Verify factual claims in a research report against the provided sources."""
     fact_check_prompt = ChatPromptTemplate.from_messages([
-        ("system", """You are a rigorous fact-checker. The 'sources' text contains content 
-gathered from research scraped pages. Identify only the MOST IMPORTANT, SPECIFIC, and CHECKABLE factual claims 
-in the report — a maximum of 15 claims total. Prioritize claims with concrete numbers, names, dates, or events 
-over vague/general statements. Skip filler sentences, transitions, and claims that are too generic to verify 
-(e.g. "X is important" or "X continues to grow").
-For each claim you select:
-- Check whether the sources support or contradict it.
-- If supported → Verified.
-- If contradicted → Contradicted.
-- If nothing in the sources addresses it → Unsupported. Do not guess or use outside knowledge."""),
-("human", """Report to verify:
+    ("system", """You're checking a report against its sources.
+
+1. Pick out the 15 most important factual claims in the report — the ones 
+with specific numbers, percentages, study names, or dates. Skip generic 
+lines like "AI is transforming healthcare" and skip anything from a 
+Conclusion or Recommendations section (that's the author's opinion, not 
+a fact to check).
+
+2. If there are fewer than 15 real factual claims, just list fewer. 
+Don't add filler claims to hit 15.
+
+3. For each claim, check the sources and mark it:
+   - Verified: the sources say this, with matching numbers/scope
+   - Contradicted: the sources say something different
+   - Unsupported: the sources don't mention this at all
+
+Don't guess. If it's not in the sources, it's Unsupported — even if it 
+sounds true or reasonable."""),
+    ("human", """Report to verify:
 {report}
 
 Sources:
 {sources}
 
 Extract every factual claim and check it against the sources above."""),
+])
     ])
     structured_llm = llm.with_structured_output(ReportVerification)
     chain = fact_check_prompt | structured_llm

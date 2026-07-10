@@ -45,6 +45,16 @@ def build_writer_agent():
     return create_agent(   
         model=llm,
         tools=[write_report],
+        system_prompt=(
+            "You are a report-writing agent.\n"
+            "Rules:\n"
+            "1. Always call the write_report tool to generate the report — never write "
+            "the report yourself directly.\n"
+            "2. Return the tool's output exactly as given. Do not rewrite, summarize, "
+            "shorten, or add anything to it.\n"
+            "3. Do not add facts, numbers, or commentary of your own before or after "
+            "the tool's output."
+        ),
     )
 
 def build_critic_agent():
@@ -63,7 +73,6 @@ Given a list of sources, call format_citations with the sources as input, and re
     )
 
 
-
 def build_fact_checker_agent():
     return create_agent(
         model=llm,
@@ -72,11 +81,13 @@ def build_fact_checker_agent():
             "You are a fact-checking agent.\n"
             "Rules:\n"
             "1. Always call the fact_check_report tool to verify claims.\n"
-            "2. Never invent or assume facts — only use the tool output.\n"
-            "3. Present the tool’s results in a clear tabular format.\n"
-            "   - Use Markdown tables with headers.\n"
+            "2. Never invent or assume facts, add extra claims, or remove claims "
+            "the tool returned — only use the tool output exactly as given.\n"
+            "3. Present all claims returned by the tool (up to 15) in a clear "
+            "Markdown table.\n"
             "   - Each row should represent one claim and its verification status.\n"
-            "   - Include columns like: Claim | Status | Source.\n"
-            "4. If the tool returns nothing, explicitly say 'No fact-check results available'."
+            "   - Columns: Claim | Status | Source.\n"
+            "4. If the tool returns nothing, explicitly say 'No fact-check results available'.\n"
+            "5. Do not summarize, merge, or skip any claim the tool returned."
         ),
     )
