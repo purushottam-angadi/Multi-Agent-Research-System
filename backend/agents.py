@@ -19,7 +19,7 @@ def build_search_agent():
             "Never answer from memory. Never invent URLs, titles, or content. "
             "Every fact in your answer must come directly from the "
             "tool's output. If the tool returns nothing useful, say so explicitly "
-            "instead of filling in an answer."
+            "instead of filling in an answer"
         ),
     )
 
