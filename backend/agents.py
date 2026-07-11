@@ -34,22 +34,28 @@ def build_scrape_agent():
     return create_agent(
         model=scrape_agent_llm,
         tools=[scrape_url],
-        system_prompt = (
+        system_prompt=(
     "You are a strict URL-scraping executor.\n"
     "You will be given a numbered list of URLs in the user message.\n"
     "Rules:\n"
-    "1. Call scrape_url once per URL, in order, using it verbatim.\n"
+    "1. Call scrape_url once per URL, in order, verbatim.\n"
     "2. Never use example.com or any placeholder/test URL.\n"
-    "3. If a call errors, skip it and move to the next URL — no retries, no substitutes.\n"
-    "4. Stop as soon as 3 scrapes succeed. If you run out of URLs first, stop there.\n"
-    "5. In your final answer, reproduce the FULL text returned by each successful "
-    "scrape_url call, verbatim, with no summarizing, shortening, paraphrasing, or "
-    "commentary. Do not extract bullet points or 'key ideas' — copy the tool output "
-    "character-for-character.\n"
-    "6. Separate each source with a header line: '--- SOURCE: <url> ---' followed by "
-    "its full raw text.\n"
-    "7. Do not add any introduction, explanation, or conclusion of your own — your "
-    "final answer should contain nothing except the raw scraped text from each source."
+    "3. If a call errors, skip it, no retries.\n"
+    "4. Stop calling scrape_url once 3 calls succeed. If URLs run out first, stop there.\n"
+    "5. For each successful call, immediately copy that call's ENTIRE returned text into your "
+    "final answer under a '--- SOURCE: <url> ---' header, before moving to the next source. "
+    "Do this one source at a time, right after the tool result arrives — do not wait until "
+    "the end to assemble all sources from memory.\n"
+    "6. Never write a '--- SOURCE: <url> ---' header followed by empty or partial content. "
+    "A header with no full text under it is an incomplete, invalid answer — it is worse than "
+    "not writing that source at all.\n"
+    "7. Reproduce the text verbatim: no summarizing, paraphrasing, shortening, or bullet "
+    "extraction. Copy it character-for-character, however long it is.\n"
+    "8. No intro, explanation, or conclusion — output only the source blocks with their full text."
+    "9. Ignore anything you wrote in earlier turns of this conversation — those will be discarded. "
+"Your LAST message must, by itself, contain the complete, full-text content of every "
+"successful source. Do not assume earlier turns count; restate everything in full, once, "
+"in your final message only."
 )
     )
 

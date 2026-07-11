@@ -231,7 +231,7 @@ Extract every factual claim and check it against the sources above."""),
     
     structured_llm = llm.with_structured_output(ReportVerification)
     chain = fact_check_prompt | structured_llm
-    return chain.invoke({"report": report, "sources": sources})
+    result= chain.invoke({"report": report, "sources": sources})
 
     if not result.claims:
         return "No fact-check results available."
