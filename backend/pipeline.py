@@ -113,8 +113,8 @@ def fact_checker_node(state: ResearchState):
     print("Step 5: Fact-checking report against sources...")
     agent = build_fact_checker_agent()
     research_combined = (
-        f"Search Results:\n{state['search_results']}\n\n"
-        f"Scrape Results:\n{state['scrape_results']}"
+        f"Full Text Sources (primary evidence — prefer this over snippets):\n{state['scrape_results']}\n\n"
+        f"Search Snippets (supplementary, lower detail — use only if a claim isn't covered above):\n{state['search_results']}"
     )
     result = agent.invoke({
         "messages": [("user",

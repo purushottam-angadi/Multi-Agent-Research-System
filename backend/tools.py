@@ -70,10 +70,13 @@ def scrape_url(url: str) -> str:
             tag.decompose()
 
        
-        text = soup.get_text(separator="\n", strip=True)
+        main_content = soup.select_one("#mw-content-text, article, main, #content")
+        text_source = main_content if main_content else soup
+
+        text = text_source.get_text(separator="\n", strip=True)
 
         
-        return text[:8000] if text else "No readable text found on the page."
+        return text[:4000] if text else "No readable text found on the page."
 
     except requests.exceptions.Timeout:
         print(f"Timeout on {url}")
@@ -84,8 +87,8 @@ def scrape_url(url: str) -> str:
 
 
 
+@tool(return_direct=True)
 
-@tool
 def write_report(topic: str, research: str) -> str:
     """Generate a structured research report from gathered information."""
     writer_prompt = ChatPromptTemplate.from_messages([
@@ -123,7 +126,7 @@ Write naturally, but keep all facts and figures traceable to the research above.
     return writer_chain.invoke({"topic": topic, "research": research})
 
 
-@tool
+@tool(return_direct=True)
 def review_report(report: str) -> str:
     """Critique a research report and provide feedback."""
     critic_prompt = ChatPromptTemplate.from_messages([
@@ -153,7 +156,7 @@ One line verdict:
     return critic_chain.invoke({"report": report})
 
 
-@tool
+@tool(return_direct=True)
 def format_citations(sources: str) -> str:
     """Format sources into APA and IEEE style citations."""
     citation_prompt = ChatPromptTemplate.from_messages([
@@ -186,11 +189,15 @@ class ReportVerification(BaseModel):
     claims: List[ClaimVerification]
     overall_accuracy: Literal["High", "Medium", "Low"]
 
-@tool
+@tool(return_direct=True)
 def fact_check_report(report: str, sources: str) -> ReportVerification:
     """Verify factual claims in a research report against the provided sources."""
     fact_check_prompt = ChatPromptTemplate.from_messages([
     ("system", """You're checking a report against its sources.
+
+The sources are split into "Full Text Sources" (primary evidence) and "Search 
+Snippets" (supplementary, lower detail) — prefer the full text when checking a 
+claim, and only fall back to a snippet if no fuller text covers that claim.
 
 1. Pick out the 15 most important factual claims in the report — the ones 
 with specific numbers, percentages, study names, or dates. Skip generic 
@@ -201,10 +208,15 @@ a fact to check).
 2. If there are fewer than 15 real factual claims, just list fewer. 
 Don't add filler claims to hit 15.
 
-3. For each claim, check the sources and mark it:
-   - Verified: the sources say this, with matching numbers/scope
-   - Contradicted: the sources say something different
-   - Unsupported: the sources don't mention this at all
+3. For each claim, check the sources and mark it using EXACTLY one of these 
+three words — no other word, no synonyms, no variations:
+   - "Verified": the sources say this, with matching numbers/scope
+   - "Contradicted": the sources say something different
+   - "Unsupported": the sources don't mention this at all
+
+The status field must be one of exactly: Verified, Unsupported, Contradicted.
+Do not use "Supported", "Confirmed", "True", "False", "Partially Verified", or 
+any other word. Only those three exact strings are valid.
 
 Don't guess. If it's not in the sources, it's Unsupported — even if it 
 sounds true or reasonable."""),
@@ -220,3 +232,13 @@ Extract every factual claim and check it against the sources above."""),
     structured_llm = llm.with_structured_output(ReportVerification)
     chain = fact_check_prompt | structured_llm
     return chain.invoke({"report": report, "sources": sources})
+
+    if not result.claims:
+        return "No fact-check results available."
+
+    rows = "\n".join(f"| {c.claim} | {c.status} |" for c in result.claims)
+    table = (
+        f"| Claim | Status |\n|---|---|\n{rows}\n\n"
+        f"**Overall accuracy:** {result.overall_accuracy}"
+    )
+    return table

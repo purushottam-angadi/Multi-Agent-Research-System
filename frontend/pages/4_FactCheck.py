@@ -33,17 +33,41 @@ if not fact_check:
     st.info("No fact-check data was returned for this run.")
     st.stop()
 
-# ── Lightweight signal extraction ─────────────────────────────────────────────
-# Doesn't assume a fixed output format from the fact-checker agent; just tallies
-# how often verified vs. flagged language shows up, so the page can surface a
-# clear at-a-glance status without editing the agent's own wording.
-flagged_pattern  = re.compile(r"\bunverified\b|\bnot verified\b|\bunsupported\b|\bfalse\b|\bincorrect\b|\bcontradict(?:s|ed|ion)?\b|\bcannot be confirmed\b", re.IGNORECASE)
-verified_pattern = re.compile(r"\bverified\b|\bsupported\b|\bconfirmed\b|\baccurate\b", re.IGNORECASE)
 
-flagged_count  = len(flagged_pattern.findall(fact_check))
-verified_count = len(verified_pattern.findall(fact_check))
+# ── Structured parsing ────────────────────────────────────────────────────────
+# The fact_check_report tool always builds an exact "| Claim | Status |" markdown
+# table with Status in {"Verified", "Unsupported", "Contradicted"}. Parse that
+# table directly instead of regex-scanning the whole blob for keywords — scanning
+# free text double-counts words like "accurate"/"confirmed" that show up naturally
+# inside claim wording, not just in the Status column.
+def parse_fact_check_table(fact_check: str):
+    """Extract (claim, status) pairs from the markdown table the tool builds."""
+    rows = []
+    for line in fact_check.splitlines():
+        line = line.strip()
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) != 2:
+            continue
+        claim, status = cells
+        if status in ("Verified", "Unsupported", "Contradicted"):
+            rows.append((claim, status))
+    return rows
 
-if flagged_count == 0 and verified_count > 0:
+
+parsed_rows = parse_fact_check_table(fact_check)
+verified_count = sum(1 for _, s in parsed_rows if s == "Verified")
+flagged_count  = sum(1 for _, s in parsed_rows if s in ("Unsupported", "Contradicted"))
+total_claims   = len(parsed_rows)
+
+# Fallback if parsing failed to find any valid rows (unexpected format upstream)
+parse_failed = total_claims == 0
+
+# ── Status stamp ───────────────────────────────────────────────────────────────
+if parse_failed:
+    stamp_html = stamp("Could not parse structured results — see full assessment below", "neutral")
+elif flagged_count == 0 and verified_count > 0:
     stamp_html = stamp(f"{verified_count} claim(s) verified against sources", "ok")
 elif flagged_count > 0:
     stamp_html = stamp(f"{flagged_count} claim(s) flagged for review", "warn")
@@ -54,10 +78,10 @@ c1, c2 = st.columns([1, 4])
 with c1:
     st.markdown(stamp_html, unsafe_allow_html=True)
 with c2:
-    if verified_count or flagged_count:
+    if not parse_failed and total_claims:
         st.markdown(
             f'<span style="color: var(--text-secondary); font-size: 0.85rem;">'
-            f'{verified_count} supported reference(s) · {flagged_count} flagged reference(s)</span>',
+            f'{verified_count} of {total_claims} claims verified · {flagged_count} flagged</span>',
             unsafe_allow_html=True,
         )
 

@@ -8,6 +8,12 @@ load_dotenv()
 
 api_key = os.getenv("MISTRAL_API_KEY")
 llm = ChatMistralAI(model="mistral-small-2603", temperature=0.2, api_key=api_key)
+scrape_agent_llm = ChatMistralAI(
+    model="mistral-small-2603",
+    temperature=0.0,
+    api_key=api_key,
+    max_tokens=16000
+)
 
 #1st agent for web search
 def build_search_agent():
@@ -26,18 +32,25 @@ def build_search_agent():
 #2nd agent for web scraping
 def build_scrape_agent():
     return create_agent(
-        model=llm,
+        model=scrape_agent_llm,
         tools=[scrape_url],
         system_prompt = (
-       "You are a strict URL-scraping executor.\n"
-"You will be given a numbered list of URLs in the user message.\n"
-"Rules:\n"
-"1. Call scrape_url once per URL, in order, using it verbatim.\n"
-"2. Never use example.com or any placeholder/test URL.\n"
-"3. If a call errors, skip it and move to the next URL — no retries, no substitutes.\n"
-"4. Stop as soon as 3 scrapes succeed. If you run out of URLs first, stop there.\n"
-"5. Report back only the content from the successful scrapes."
-    ) 
+    "You are a strict URL-scraping executor.\n"
+    "You will be given a numbered list of URLs in the user message.\n"
+    "Rules:\n"
+    "1. Call scrape_url once per URL, in order, using it verbatim.\n"
+    "2. Never use example.com or any placeholder/test URL.\n"
+    "3. If a call errors, skip it and move to the next URL — no retries, no substitutes.\n"
+    "4. Stop as soon as 3 scrapes succeed. If you run out of URLs first, stop there.\n"
+    "5. In your final answer, reproduce the FULL text returned by each successful "
+    "scrape_url call, verbatim, with no summarizing, shortening, paraphrasing, or "
+    "commentary. Do not extract bullet points or 'key ideas' — copy the tool output "
+    "character-for-character.\n"
+    "6. Separate each source with a header line: '--- SOURCE: <url> ---' followed by "
+    "its full raw text.\n"
+    "7. Do not add any introduction, explanation, or conclusion of your own — your "
+    "final answer should contain nothing except the raw scraped text from each source."
+)
     )
 
 def build_writer_agent():
@@ -59,9 +72,12 @@ def build_writer_agent():
     )
 
 def build_critic_agent():
-    return create_agent( 
+    return create_agent(
         model=llm,
         tools=[review_report],
+        system_prompt=(
+            "Call review_report exactly once with the given report and return its output as-is."
+        ),
     )
 
 def build_citation_agent():
@@ -79,16 +95,8 @@ def build_fact_checker_agent():
         model=llm,
         tools=[fact_check_report],
         system_prompt=(
-            "You are a fact-checking agent.\n"
-            "Rules:\n"
-            "1. Always call the fact_check_report tool to verify claims.\n"
-            "2. Never invent or assume facts, add extra claims, or remove claims "
-            "the tool returned — only use the tool output exactly as given.\n"
-            "3. Present all claims returned by the tool only 15 in a clear "
-            "Markdown table.\n"
-            "   - Each row should represent one claim and its verification status.\n"
-            "   - Columns: Claim | Status | Source.\n"
-            "4. If the tool returns nothing, explicitly say 'No fact-check results available'.\n"
-            "5. Do not summarize, merge, or skip any claim the tool returned."
+            "Call fact_check_report exactly once, passing the full report and the full "
+            "sources text exactly as given to you — do not summarize or truncate either "
+            "before passing them in. Return the tool's output as your final answer, unchanged."
         ),
     )
