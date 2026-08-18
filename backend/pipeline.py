@@ -33,6 +33,8 @@ class ResearchState(TypedDict):
     feedback: str
     fact_check: str
     citations: str
+    verified: bool
+    retries: int
 
 #otput can be list of dicts or a single string, so we need to handle both cases
 def _extract_text(content) -> str:
@@ -122,7 +124,33 @@ def fact_checker_node(state: ResearchState):
             f"Report:\n{state['report']}\n\n"
             f"Sources:\n{research_combined}")]
     })
-    state["fact_check"] = _extract_text(result["messages"][-1].content)
+    table_output = _extract_text(result["messages"][-1].content)
+    state["fact_check"] = table_output
+    verified_count = len(re.findall(r"\|\s.*?\s\|\sVerified\s\|", table_output))
+    unsupported_count = len(re.findall(r"\|\s.*?\s\|\sUnsupported\s\|", table_output))
+    contradicted_count = len(re.findall(r"\|\s.*?\s\|\sContradicted\s\|", table_output))
+    total = verified_count + unsupported_count + contradicted_count
+
+    # ✅ Majority threshold logic
+    if total > 0:
+        verified_pct = verified_count / total
+        contradicted_pct = contradicted_count / total
+        state["verified"] = verified_pct >= 0.7 and contradicted_pct < 0.1
+    else:
+        state["verified"] = False
+
+    # ✅ Retry counter safety net
+    state["retries"] = state.get("retries", 0)
+    if not state["verified"] and state["retries"] < 2:
+        state["retries"] += 1
+        print(f"Verification failed, retrying search (attempt {state['retries']})...")
+    else:
+        print("Proceeding to critic stage...")
+
+    print(f"Fact-check summary: {verified_count}/{total} verified, "
+          f"{unsupported_count} unsupported, {contradicted_count} contradicted")
+    print(f"Verified flag: {state['verified']} | Retries: {state['retries']}")
+
     return state
 
 def citation_node(state: ResearchState):
@@ -137,6 +165,7 @@ def citation_node(state: ResearchState):
 
 
 #building the graph
+#building the graph
 graph_builder = StateGraph(ResearchState)
 
 graph_builder.add_node("search", search_node)
@@ -146,15 +175,26 @@ graph_builder.add_node("critic", critic_node)
 graph_builder.add_node("fact_checker", fact_checker_node)
 graph_builder.add_node("citations", citation_node)
 
+# 🚀 Entry point edge
 graph_builder.add_edge(START, "search")
+
+# Normal flow edges
 graph_builder.add_edge("search", "scrape")
 graph_builder.add_edge("scrape", "writer")
 graph_builder.add_edge("writer", "fact_checker")
-graph_builder.add_edge("fact_checker", "critic")
+
+# ✅ Conditional routing from fact_checker
+graph_builder.add_conditional_edges(
+    "fact_checker",
+    lambda s: "search" if not s.get("verified", False) and s.get("retries", 0) < 2 else "critic",
+    {"search": "search", "critic": "critic"}
+)
+
 graph_builder.add_edge("critic", "citations")
 graph_builder.add_edge("citations", END)
 
 app = graph_builder.compile()
+
 
 
 def run_pipeline(topic: str) -> dict:
