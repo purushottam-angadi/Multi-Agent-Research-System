@@ -8,8 +8,10 @@ from dotenv import load_dotenv
 import os
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-import httpx
-from rich import print
+from rich import logging, print
+import logging
+from pydantic import BaseModel, Field
+from typing import List, Literal
 load_dotenv()
 
 
@@ -18,18 +20,65 @@ llm = ChatMistralAI(model="mistral-small-2603", temperature=0.1)
 TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
 
+from langchain_community.tools import DuckDuckGoSearchResults
+
+ddg_fallback = DuckDuckGoSearchResults(output_format="list") 
+
+class Query_out(BaseModel):
+     complexity: Literal["simple", "complex"]
+     sub_queries: List[str] = Field(default_factory=list, max_items=3)
 
 @tool
 def web_search(query: str) -> str:
     """Search the web for recent and reliable information and return title, url and snippets"""
-    results = tavily_client.search(query=query, max_results=5, search_depth="advanced", include_answer=True)
 
-    out = []
-    for r in results['results']:
+    def single_search(q: str)-> str:
+        
+     try:
+      results = tavily_client.search(query=q, max_results=5, search_depth="advanced", include_answer=True)
+
+      out = []
+      for r in results['results']:
         out.append(f"Title: {r['title']}\nURL: {r['url']}\nSnippet: {r['content'][:300]}")
 
-    sources_text = "\n-------\n".join(out)
-    return sources_text  
+      sources_text = "\n-------\n".join(out)
+      return sources_text  
+     except Exception as e:
+       print(f"Error during web search: {e}. Falling back to duckduckgo search.")
+       try:
+        fallback_results = ddg_fallback.invoke(query=q,max_results=5)
+        out = []
+        for r in fallback_results:   
+         out.append(f"Title: {r['title']}\nURL: {r['href']}\nSnippet: {r['body'][:300]}")
+         sources_text = "\n-------\n".join(out)
+        return sources_text
+
+       except Exception as fallback_error:
+        return f"Error during fallback search: {fallback_error}. Unable to perform web search."
+     
+    query_prompt = ChatPromptTemplate.from_messages([
+    ("system", """You are a web search assistant. Your task is to analyze the user's query and 
+determine if it is simple or complex. If the query is complex, break it down into sub-queries 
+that can be searched individually. Return the complexity and any sub-queries in a structured format."""),
+    ("human", """Analyze the following query and determine its complexity:
+
+Query: {query}"""),
+])
+    structured_llm = llm.with_structured_output(Query_out)
+    query_chain = query_prompt | structured_llm
+    plan= query_chain.invoke({"query": query})
+
+    if plan.complexity == "simple":
+     logging.info(f"Query classified as SIMPLE: {query}")
+     return single_search(query)
+    else:
+     logging.info(f"Query classified as COMPLEX. Sub-queries: {plan.sub_queries}")
+     combined = []
+     for q in plan.sub_queries:
+        combined.append(f"### {q}\n{single_search(q)}")
+    return "\n\n".join(combined)
+
+        
 
 
 
