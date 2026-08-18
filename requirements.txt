@@ -1,0 +1,33 @@
+# Environment and utilities
+python-dotenv
+requests
+rich
+
+# LangChain ecosystem (LCEL + Runnables)
+langchain
+langchain-core
+langchain-community
+langchain-mistralai
+langchain-tavily
+langchain-text-splitters
+langchain-huggingface
+
+# Mistral AI SDK
+mistralai
+
+# Tools and agents
+tavily
+beautifulsoup4
+lxml
+
+
+sentence-transformers
+
+# Backend / API integration
+fastapi
+uvicorn
+
+# Typing and validation
+pydantic
+typing-extensions
+langgraph
